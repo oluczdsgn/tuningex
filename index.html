@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tuning Ex Machina - Experiência Interativa</title>
+  <style>
+    /* Reset e Estilos Base */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    html, body {
+      height: 100%;
+      overflow: hidden;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: rgb(255, 241, 233); /* Cor de fundo da página */
+      color: #1a1915;
+    }
+    a {
+        text-decoration: none;
+        color: inherit;
+    }
+
+    /* Menu Lateral Esquerdo */
+    .left-sidebar {
+        position: fixed;
+        top: 50%;
+        left: 0;
+        transform: translateY(-50%);
+        padding: 1rem 0;
+        z-index: 50;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.5s ease-out;
+    }
+    .left-sidebar.visible {
+        opacity: 1;
+        pointer-events: auto;
+    }
+    .left-sidebar ul {
+        list-style: none;
+    }
+    .left-sidebar li a {
+        color: #333; /* Cor padrão cinza escuro */
+        font-weight: 600;
+        writing-mode: vertical-rl;
+        text-orientation: mixed;
+        padding: 1.5rem 0.5rem;
+        display: block;
+        transition: color 0.3s, opacity 0.3s;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+    }
+    .left-sidebar.menu-light li a {
+        color: #fff; /* Cor para fundos escuros */
+    }
+    .left-sidebar li a.dark-text {
+        color: #333 !important; /* Força a cor escura sobre a branca */
+    }
+    .left-sidebar li a:hover {
+        opacity: 0.7;
+    }
+    .left-sidebar li a.active {
+        opacity: 1;
+    }
+    
+
+    /* Contêiner de Seção para Transições */
+    .page-section {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.6s ease-in-out, visibility 0.6s;
+    }
+    .page-section.is-visible {
+        opacity: 1;
+        visibility: visible;
+        z-index: 10;
+    }
+
+    /* Tela Inicial (Flutuante) */
+    .hero-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      perspective: 1000px;
+      background-color: rgb(255, 241, 233);
+    }
+    .hero-title, .floating-image {
+        transition: opacity 0.5s ease-out, transform 0.2s ease-out;
+    }
+    .hero-title {
+      font-size: 3.5em;
+      text-align: center;
+      font-weight: 500;
+      z-index: 5; /* Z-index menor para ficar atrás das imagens */
+      cursor: pointer;
+    }
+    .floating-image {
+      position: absolute;
+      border-radius: 4px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      cursor: pointer;
+      z-index: 6; /* Z-index maior para ficar na frente do texto */
+    }
+    .floating-image:hover {
+        transform: scale(1.05) !important;
+        z-index: 15;
+    }
+    .floating-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      border-radius: 4px;
+    }
+    #img1 { top: 18%; left: 8%; width: 220px; height: 150px; }
+    #img2 { top: 50%; left: 12%; width: 120px; height: 120px; }
+    #img3 { top: 65%; left: 20%; width: 250px; height: 180px; }
+    #img4 { top: 10%; left: 25%; width: 180px; height: 220px; }
+    #img5 { top: 8%; left: 40%; width: 200px; height: 150px; }
+    #img6 { top: 15%; right: 20%; width: 180px; height: 240px; }
+    #img7 { top: 8%; right: 8%; width: 100px; height: 120px; }
+    #img8 { top: 40%; right: 10%; width: 280px; height: 200px; }
+    #img9 { top: 75%; right: 35%; width: 150px; height: 100px; }
+    #img10 { bottom: 12%; right: 15%; width: 300px; height: 180px; }
+
+
+    /* Tela de Zoom */
+    .zoom-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      background-color: transparent;
+      z-index: 20;
+      pointer-events: none;
+    }
+    .zoom-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scale(0);
+      opacity: 0;
+      transition: transform 0.5s ease-out, opacity 0.5s ease-out;
+      pointer-events: auto;
+    }
+
+    /* Barra Lateral Direita */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 450px;
+      height: 100%;
+      background-color: #000;
+      padding: 2.5rem;
+      transform: translateX(100%);
+      transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+      z-index: 40;
+      color: #f4f3f0;
+      overflow-y: auto;
+    }
+    .sidebar.visible {
+      transform: translateX(0);
+    }
+    .sidebar h2 {
+      font-size: 2em;
+      margin-bottom: 1rem;
+      border-bottom: 2px solid #f4f3f0;
+      padding-bottom: 0.5rem;
+    }
+    .sidebar p {
+      font-size: 1em;
+      line-height: 1.7;
+      opacity: 0.9;
+    }
+    
+    /* Indicador de Ação */
+    .action-indicator {
+        position: fixed;
+        bottom: 2rem;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: rgba(26, 25, 21, 0.7);
+        color: #f4f3f0;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        font-weight: 600;
+        z-index: 30;
+        opacity: 1;
+        transition: opacity 0.5s;
+    }
+    .action-indicator.hidden {
+        opacity: 0;
+    }
+
+    /* Seção da Galeria Fullscreen */
+    .gallery-section {
+        align-items: center;
+        padding: 0 4rem;
+        z-index: 30;
+    }
+    .horizontal-scroll-wrapper {
+        display: flex;
+        width: 100%;
+        overflow-x: auto;
+        padding-bottom: 20px;
+    }
+    .horizontal-scroll-wrapper::-webkit-scrollbar { height: 8px; }
+    .horizontal-scroll-wrapper::-webkit-scrollbar-track { background: #e0d8d4; }
+    .horizontal-scroll-wrapper::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+    .horizontal-scroll-wrapper::-webkit-scrollbar-thumb:hover { background: #555; }
+    .gallery-item {
+        flex: 0 0 auto;
+        height: 70vh;
+        margin-right: 1.5rem;
+        border-radius: 4px;
+        overflow: hidden;
+        cursor: pointer;
+    }
+    .gallery-item img { height: 100%; width: auto; display: block; }
+
+    /* Seção Sobre */
+    .about-section {
+        overflow: hidden;
+        z-index: 30;
+    }
+    .about-bg-image {
+        width: 100%; height: 100%;
+        object-fit: cover;
+    }
+    .white-banner {
+        position: absolute;
+        bottom: 0; left: 0;
+        width: 100%;
+        height: 0; /* Começa com altura 0 */
+        background-color: #fff;
+        transition: height 0.4s ease-out;
+        display: flex;
+        align-items: flex-start; /* Alinha o conteúdo no topo */
+    }
+    .about-text-content {
+        padding: 4rem;
+        opacity: 0;
+        transition: opacity 0.4s ease-out;
+    }
+    .about-text-content h1 {
+        font-size: 8vw;
+        font-weight: 600;
+        line-height: 1;
+    }
+    .about-text-content p {
+        max-width: 600px;
+        font-size: 1.1em;
+        margin-top: 1rem;
+    }
+
+    /* Lightbox */
+    .lightbox {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background-color: rgba(0,0,0,0.9);
+        z-index: 100;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.4s, visibility 0.4s;
+    }
+    .lightbox.open {
+        opacity: 1;
+        visibility: visible;
+    }
+    .lightbox img {
+        max-width: 90%;
+        max-height: 90%;
+        object-fit: contain;
+        transform: scale(0.9);
+        transition: transform 0.4s;
+    }
+    .lightbox.open img {
+        transform: scale(1);
+    }
+    .lightbox-close {
+        position: absolute;
+        top: 2rem; right: 2rem;
+        font-size: 2.5rem;
+        color: #fff;
+        cursor: pointer;
+        line-height: 1;
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- Menu Lateral Esquerdo -->
+  <nav id="leftSidebar" class="left-sidebar">
+      <ul>
+          <li><a href="#" id="inicioBtn" class="active">Início</a></li>
+          <li><a href="#" id="galeriaBtn">Galeria</a></li>
+          <li><a href="#" id="sobreBtn">Sobre</a></li>
+      </ul>
+  </nav>
+
+  <!-- Tela Inicial -->
+  <div id="heroContainer" class="page-section hero-container">
+    <h1 id="heroTitle" class="hero-title">tuning ex machina</h1>
+    <div id="img1" class="floating-image lightbox-trigger" data-depth="0.2"><img src="https://raw.githubusercontent.com/oluczdsgn/tuning1/main/Fotos/andreas-nast-ROIFnieS6No-unsplash.jpg" alt="Imagem 1"></div>
+    <div id="img2" class="floating-image lightbox-trigger" data-depth="-0.3"><img src="https://raw.githubusercontent.com/oluczdsgn/tuning1/main/Fotos/cecile-hunger-AAFSqto45cI-unsplash.jpg" alt="Imagem 2"></div>
+    <div id="img3" class="floating-image lightbox-trigger" data-depth="0.4"><img src="https://raw.githubusercontent.com/oluczdsgn/tuning1/main/Fotos/christian-wiediger-2Wn2A3HZFLU-unsplash.jpg" alt="Imagem 3"></div>
+    <div id="img4" class="floating-image lightbox-trigger" data-depth="-0.2"><img src="https://raw.githubusercontent.com/oluczdsgn/tuning1/main/Fotos/christoph-wick-H3Eic7Dghpo-unsplash.jpg" alt="Imagem 4"></div>
+    <div id="img5" class="floating-image lightbox-trigger" data-depth="0.1"><img src="https://raw.githubusercontent.com/oluczdsgn/tuning1/main/Fotos/christopher-john-PxjHO-vjogU-unsplash.jpg" alt="Imagem 5"></div>
+    <div id="img6" class="floating-image lightbox-trigger" data-depth="-0.4"><img src="https://raw.githubusercontent.com/oluczdsgn/tuning1/main/Fotos/frank-albrecht-jLr7ESvTyjE-unsplash.jpg" alt="Imagem 6"></div>
+    <div id="img7" class="floating-image lightbox-trigger" data-depth="0.3"><img src="https://raw.githubusercontent.com/oluczdsgn/tuning1/main/Fotos/jan-kopriva-d6nXAzXdjlk-unsplash.jpg" alt="Imagem 7"></div>
+    <div id="img8" class="floating-image lightbox-trigger" data-depth="-0.1"><img src="https://raw.githubusercontent.com/oluczdsgn/tuning1/main/Fotos/jevgeni-fil-JRe_2tZRuAY-unsplash.jpg" alt="Imagem 8"></div>
+    <div id="img9" class="floating-image lightbox-trigger" data-depth="0.5"><img src="https://raw.githubusercontent.com/oluczdsgn/tuning1/main/Fotos/julian-hochgesang-0axbBC_5-O0-unsplash.jpg" alt="Imagem 9"></div>
+    <div id="img10" class="floating-image lightbox-trigger" data-depth="-0.5"><img src="https://raw.githubusercontent.com/oluczdsgn/tuning1/main/Fotos/julian-hochgesang-1fDZ4BijtG0-unsplash.jpg" alt="Imagem 10"></div>
+  </div>
+
+  <!-- Tela de Zoom -->
+  <div id="zoomContainer" class="page-section zoom-container">
+    <img id="zoomImage" class="zoom-image" src="https://raw.githubusercontent.com/oluczdsgn/tuning1/main/Fotos/klaudiusz-pietroszek-WxruCJwytp8-unsplash.jpg" alt="Carro esportivo modificado">
+  </div>
+
+  <!-- Barra Lateral Direita -->
+  <aside id="sidebar" class="sidebar">
+    <h2>A Arte do Tuning</h2>
+    <p>
+      "Tuning" é muito mais do que apenas modificar um carro; é uma forma de expressão pessoal e uma busca pela performance perfeita. Originado da paixão por velocidade e estética, o tuning automotivo transforma veículos de produção em massa em obras de arte únicas e personalizadas.
+      <br><br>
+      Desde ajustes finos no motor para extrair mais potência, passando pela suspensão para uma dirigibilidade mais precisa, até modificações estéticas como body kits e rodas exclusivas, cada detalhe é pensado para refletir a identidade do proprietário e otimizar a experiência de condução.
+    </p>
+  </aside>
+
+  <!-- Seção da Galeria -->
+  <section id="gallerySection" class="page-section gallery-section">
+      <div class="horizontal-scroll-wrapper">
+          <div class="gallery-item lightbox-trigger"><img src="https://raw.githubusercontent.com/oluczdsgn/tuning1/main/Fotos/andreas-nast-ROIFnieS6No-unsplash.jpg" alt="Imagem da Galeria"></div>
+          <div class="gallery-item lightbox-trigger"><img src="https://raw.githubusercontent.com/oluczdsgn/tuning1/main/Fotos/cecile-hunger-AAFSqto45cI-unsplash.jpg" alt="Imagem da Galeria"></div>
+          <div class="gallery-item lightbox-trigger"><img src="https://raw.githubusercontent.com/oluczdsgn/tuning1/main/Fotos/christian-wiediger-2Wn2A3HZFLU-unsplash.jpg" alt="Imagem da Galeria"></div>
+          <div class="gallery-item lightbox-trigger"><img src="https://raw.githubusercontent.com/oluczdsgn/tuning1/main/Fotos/christoph-wick-H3Eic7Dghpo-unsplash.jpg" alt="Imagem da Galeria"></div>
+          <div class="gallery-item lightbox-trigger"><img src="https://raw.githubusercontent.com/oluczdsgn/tuning1/main/Fotos/christopher-john-PxjHO-vjogU-unsplash.jpg" alt="Imagem da Galeria"></div>
+          <div class="gallery-item lightbox-trigger"><img src="https://raw.githubusercontent.com/oluczdsgn/tuning1/main/Fotos/frank-albrecht-jLr7ESvTyjE-unsplash.jpg" alt="Imagem da Galeria"></div>
+          <div class="gallery-item lightbox-trigger"><img src="https://raw.githubusercontent.com/oluczdsgn/tuning1/main/Fotos/julian-hochgesang-xayPzzDCA4c-unsplash%20(1).jpg" alt="Imagem da Galeria"></div>
+          <div class="gallery-item lightbox-trigger"><img src="https://raw.githubusercontent.com/oluczdsgn/tuning1/main/Fotos/karol-smoczynski-BsNhk7qoOuM-unsplash%20(1).jpg" alt="Imagem da Galeria"></div>
+          <div class="gallery-item lightbox-trigger"><img src="https://raw.githubusercontent.com/oluczdsgn/tuning1/main/Fotos/klaudiusz-pietroszek-HUuqIFS3GtY-unsplash.jpg" alt="Imagem da Galeria"></div>
+          <div class="gallery-item lightbox-trigger"><img src="https://raw.githubusercontent.com/oluczdsgn/tuning1/main/Fotos/klaudiusz-pietroszek-PZ96jlI5XfY-unsplash.jpg" alt="Imagem da Galeria"></div>
+          <div class="gallery-item lightbox-trigger"><img src="https://raw.githubusercontent.com/oluczdsgn/tuning1/main/Fotos/klaudiusz-pietroszek-R_v5YjrnLxo-unsplash.jpg" alt="Imagem da Galeria"></div>
+          <div class="gallery-item lightbox-trigger"><img src="https://raw.githubusercontent.com/oluczdsgn/tuning1/main/Fotos/leon-kohle--6sQnEfT8i0-unsplash.jpg" alt="Imagem da Galeria"></div>
+          <div class="gallery-item lightbox-trigger"><img src="https://raw.githubusercontent.com/oluczdsgn/tuning1/main/Fotos/leon-kohle-2Ro4nKyIBOY-unsplash.jpg" alt="Imagem da Galeria"></div>
+          <div class="gallery-item lightbox-trigger"><img src="https://raw.githubusercontent.com/oluczdsgn/tuning1/main/Fotos/martin-katler-kqZKEbw4VHc-unsplash.jpg" alt="Imagem da Galeria"></div>
+          <div class="gallery-item lightbox-trigger"><img src="https://raw.githubusercontent.com/oluczdsgn/tuning1/main/Fotos/niklas-du-MPOyMBb7aGw-unsplash.jpg" alt="Imagem da Galeria"></div>
+          <div class="gallery-item lightbox-trigger"><img src="https://raw.githubusercontent.com/oluczdsgn/tuning1/main/Fotos/omer-haktan-bulut-HzfOR4_AJ1A-unsplash.jpg" alt="Imagem da Galeria"></div>
+          <div class="gallery-item lightbox-trigger"><img src="https://raw.githubusercontent.com/oluczdsgn/tuning1/main/Fotos/serge-kutuzov-1K9-TbJWs2U-unsplash.jpg" alt="Imagem da Galeria"></div>
+          <div class="gallery-item lightbox-trigger"><img src="https://raw.githubusercontent.com/oluczdsgn/tuning1/main/Fotos/simon-henrotte-46AdNrDcByY-unsplash.jpg" alt="Imagem da Galeria"></div>
+      </div>
+  </section>
+
+  <!-- Seção Sobre -->
+  <section id="aboutSection" class="page-section about-section">
+      <img class="about-bg-image" src="https://raw.githubusercontent.com/oluczdsgn/tuning1/main/Fotos/vitali-adutskevich-qSiy6LYVPu8-unsplash.jpg" alt="Imagem de fundo da seção Sobre">
+      <div id="whiteBanner" class="white-banner">
+          <div id="aboutTextContent" class="about-text-content">
+              <h1>Sobre</h1>
+              <p>Tuning Ex Machina é um encontro de carros organizado no mundo todo, onde o foco é a autenticidade na hora de criar o visual dos carros. Celebramos a criatividade e a paixão por veículos únicos, reunindo entusiastas que transformam máquinas em verdadeiras obras de arte.</p>
+          </div>
+      </div>
+  </section>
+
+  <!-- Lightbox -->
+  <div id="lightbox" class="lightbox">
+      <span id="lightboxClose" class="lightbox-close">&times;</span>
+      <img id="lightboxImage" src="" alt="Imagem em tela cheia">
+  </div>
+
+  <div id="actionIndicator" class="action-indicator">
+    Gire o scroll do mouse
+  </div>
+
+  <script>
+    const heroContainer = document.getElementById('heroContainer');
+    const heroTitle = document.getElementById('heroTitle');
+    const floatingImages = document.querySelectorAll('.floating-image');
+    const zoomContainer = document.getElementById('zoomContainer');
+    const zoomImage = document.getElementById('zoomImage');
+    const rightSidebar = document.getElementById('sidebar');
+    const leftSidebar = document.getElementById('leftSidebar');
+    const actionIndicator = document.getElementById('actionIndicator');
+    const gallerySection = document.getElementById('gallerySection');
+    const aboutSection = document.getElementById('aboutSection');
+    const whiteBanner = document.getElementById('whiteBanner');
+    const aboutTextContent = document.getElementById('aboutTextContent');
+    const inicioBtn = document.getElementById('inicioBtn');
+    const galeriaBtn = document.getElementById('galeriaBtn');
+    const sobreBtn = document.getElementById('sobreBtn');
+    const galleryScroller = document.querySelector('.horizontal-scroll-wrapper');
+    const lightbox = document.getElementById('lightbox');
+    const lightboxImage = document.getElementById('lightboxImage');
+    const lightboxCloseBtn = document.getElementById('lightboxClose');
+    
+    let currentScale = 0.0;
+    const minScale = 0.0;
+    const maxScale = 2.5;
+    const zoomStep = 0.25;
+
+    let aboutScrollProgress = 0;
+
+    function handleParallax(e) {
+      if (currentScale > minScale) return;
+      const { clientX, clientY } = e;
+      const x = (clientX / window.innerWidth) - 0.5;
+      const y = (clientY / window.innerHeight) - 0.5;
+
+      floatingImages.forEach(img => {
+        const depth = img.getAttribute('data-depth');
+        const moveX = x * 30 * depth;
+        const moveY = y * 30 * depth;
+        const rotateY = x * 10;
+        const rotateX = -y * 10;
+        img.style.transform = `translate(${moveX}px, ${moveY}px) rotateY(${rotateY}deg) rotateX(${rotateX}deg)`;
+      });
+    }
+    
+    function updateZoomView() {
+        const opacity = Math.min(currentScale / 1.0, 1.0);
+        zoomImage.style.transform = `scale(${currentScale})`;
+        zoomImage.style.opacity = opacity;
+        
+        const zoomPercentage = ((currentScale - minScale) / (maxScale - minScale)) * 100;
+        if (currentScale > 0.05) {
+            actionIndicator.textContent = `Zoom: ${Math.round(zoomPercentage)}%`;
+        } else {
+            actionIndicator.textContent = `Gire o scroll do mouse`;
+        }
+
+        if (currentScale >= maxScale) {
+            rightSidebar.classList.add('visible');
+            leftSidebar.classList.add('visible');
+            leftSidebar.classList.add('menu-light');
+            actionIndicator.classList.add('hidden');
+        } else {
+            rightSidebar.classList.remove('visible');
+            leftSidebar.classList.remove('visible');
+            leftSidebar.classList.remove('menu-light');
+            actionIndicator.classList.remove('hidden');
+        }
+    }
+
+    function handleZoom(e) {
+      e.preventDefault();
+      if (e.deltaY < 0) { currentScale += zoomStep; } 
+      else { currentScale -= zoomStep; }
+      currentScale = Math.max(minScale, Math.min(maxScale, currentScale));
+      updateZoomView();
+    }
+
+    function handleGalleryScroll(e) {
+        e.preventDefault();
+        galleryScroller.scrollLeft += e.deltaY;
+    }
+
+    function handleAboutScroll(e) {
+        e.preventDefault();
+        if (e.deltaY < 0) { aboutScrollProgress -= 5; }
+        else { aboutScrollProgress += 5; }
+        aboutScrollProgress = Math.max(0, Math.min(100, aboutScrollProgress));
+
+        whiteBanner.style.height = `${aboutScrollProgress}%`;
+        aboutTextContent.style.opacity = Math.max(0, (aboutScrollProgress - 20) / 80);
+        
+        const bannerTop = whiteBanner.getBoundingClientRect().top;
+        document.querySelectorAll('.left-sidebar li a').forEach(link => {
+            const linkRect = link.getBoundingClientRect();
+            if ((linkRect.top + linkRect.height / 2) > bannerTop) {
+                link.classList.add('dark-text');
+            } else {
+                link.classList.remove('dark-text');
+            }
+        });
+        
+        if (aboutScrollProgress > 0) {
+            actionIndicator.classList.add('hidden');
+        } else {
+            actionIndicator.classList.remove('hidden');
+        }
+    }
+    
+    function setActiveSection(activeSection) {
+        [heroContainer, zoomContainer, gallerySection, aboutSection].forEach(s => s.classList.remove('is-visible'));
+        
+        document.removeEventListener('wheel', handleZoom);
+        document.removeEventListener('wheel', handleGalleryScroll);
+        document.removeEventListener('wheel', handleAboutScroll);
+        document.removeEventListener('mousemove', handleParallax);
+
+        [inicioBtn, galeriaBtn, sobreBtn].forEach(b => b.classList.remove('active'));
+
+        actionIndicator.classList.add('hidden');
+        rightSidebar.classList.remove('visible');
+        leftSidebar.classList.remove('visible');
+        leftSidebar.classList.remove('menu-light');
+        document.querySelectorAll('.left-sidebar li a').forEach(link => link.classList.remove('dark-text'));
+
+
+        switch(activeSection) {
+            case 'inicio':
+                heroContainer.classList.add('is-visible');
+                zoomContainer.classList.add('is-visible');
+                actionIndicator.classList.remove('hidden');
+                document.addEventListener('wheel', handleZoom, { passive: false });
+                document.addEventListener('mousemove', handleParallax);
+                inicioBtn.classList.add('active');
+                break;
+            case 'galeria':
+                gallerySection.classList.add('is-visible');
+                leftSidebar.classList.add('visible');
+                document.addEventListener('wheel', handleGalleryScroll, { passive: false });
+                galeriaBtn.classList.add('active');
+                break;
+            case 'sobre':
+                aboutSection.classList.add('is-visible');
+                leftSidebar.classList.add('visible');
+                leftSidebar.classList.add('menu-light');
+                actionIndicator.classList.remove('hidden');
+                document.addEventListener('wheel', handleAboutScroll, { passive: false });
+                sobreBtn.classList.add('active');
+                break;
+        }
+    }
+    
+    function openLightbox(src) {
+        lightboxImage.src = src;
+        lightbox.classList.add('open');
+    }
+
+    function closeLightbox() {
+        lightbox.classList.remove('open');
+    }
+
+    document.querySelectorAll('.lightbox-trigger').forEach(el => {
+        el.addEventListener('click', () => {
+            const imgSrc = el.querySelector('img').src;
+            openLightbox(imgSrc);
+        });
+    });
+    
+    heroTitle.addEventListener('click', (e) => {
+        e.preventDefault();
+        setActiveSection('sobre');
+    });
+
+    lightboxCloseBtn.addEventListener('click', closeLightbox);
+    lightbox.addEventListener('click', (e) => {
+        if (e.target === lightbox) {
+            closeLightbox();
+        }
+    });
+
+    inicioBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        currentScale = 0.0;
+        updateZoomView();
+        setActiveSection('inicio');
+    });
+
+    galeriaBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        setActiveSection('galeria');
+    });
+
+    sobreBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        aboutScrollProgress = 0;
+        whiteBanner.style.height = '0%';
+        aboutTextContent.style.opacity = '0';
+        setActiveSection('sobre');
+    });
+
+    // Estado inicial
+    setActiveSection('inicio');
+
+  </script>
+
+</body>
+</html>
