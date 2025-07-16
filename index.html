@@ -54,6 +54,7 @@
         transition: color 0.3s, opacity 0.3s;
         text-transform: uppercase;
         letter-spacing: 2px;
+        text-shadow: 0 0 5px rgba(0, 0, 0, 0.4); /* Sombra sutil adicionada */
     }
     .left-sidebar.menu-light li a {
         color: #fff; /* Cor para fundos escuros */
@@ -205,6 +206,7 @@
 
     /* Seção da Galeria Fullscreen */
     .gallery-section {
+        display: flex; /* Alterado para flex para alinhar */
         align-items: center;
         padding: 0 4rem;
         z-index: 30;
@@ -526,6 +528,8 @@
             case 'galeria':
                 gallerySection.classList.add('is-visible');
                 leftSidebar.classList.add('visible');
+                actionIndicator.classList.remove('hidden');
+                actionIndicator.textContent = 'Gire o scroll do mouse';
                 document.addEventListener('wheel', handleGalleryScroll, { passive: false });
                 galeriaBtn.classList.add('active');
                 break;
@@ -534,6 +538,7 @@
                 leftSidebar.classList.add('visible');
                 leftSidebar.classList.add('menu-light');
                 actionIndicator.classList.remove('hidden');
+                actionIndicator.textContent = 'Gire o scroll do mouse';
                 document.addEventListener('wheel', handleAboutScroll, { passive: false });
                 sobreBtn.classList.add('active');
                 break;
